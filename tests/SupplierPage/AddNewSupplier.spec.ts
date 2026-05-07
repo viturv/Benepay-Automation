@@ -1,6 +1,4 @@
-import { test } from '@playwright/test';
-
-test.use({ storageState: 'auth.json' });
+import { test } from '../utils/fixtures';
 
 function rand(prefix: string) {
   return `${prefix}${Math.random().toString(36).slice(2, 7).toUpperCase()}`;

@@ -2,10 +2,6 @@ import { test, expect } from "@playwright/test";
 import path from "path/win32";
 
 
-test.use({
-  storageState: "auth.json",
-});
-
 const filePath = path.join(
   "C:\\Users\\vitur\\Downloads",
   "missing_supplier_name.pdf",

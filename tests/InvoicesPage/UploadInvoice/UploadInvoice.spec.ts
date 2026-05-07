@@ -1,9 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../utils/fixtures';
 import path from 'path';
-
-test.use({
-  storageState: 'auth.json'
-});
 
 test('test', async ({ page }) => {
   test.setTimeout(120000); // correct way to extend timeout inside test body

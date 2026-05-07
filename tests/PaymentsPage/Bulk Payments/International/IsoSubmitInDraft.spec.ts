@@ -1,8 +1,4 @@
-import { test, expect } from '@playwright/test';
-
-test.use({
-  storageState: 'auth.json'
-});
+import { test, expect } from '../../../utils/fixtures';
 
 test('test', async ({ page }) => {
   await page.goto('https://uat-payouts.benepay.io/client-debtors');

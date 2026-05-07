@@ -1,8 +1,4 @@
-import { test, expect } from '@playwright/test';
-
-test.use({
-  storageState: 'auth.json'
-});
+import { test, expect } from '../utils/fixtures';
 
 // Generates a random 8-digit account number
 function randomAccountNumber(): string {

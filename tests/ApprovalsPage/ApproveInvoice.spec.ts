@@ -1,9 +1,5 @@
 import { test, expect } from "@playwright/test";
 
-test.use({
-  storageState: "auth.json",
-});
-
 test("test", async ({ page }) => {
   // Step 1: Navigate and click the first row's checkbox
   await page.goto("https://uat-payouts.benepay.io/client-debtors");

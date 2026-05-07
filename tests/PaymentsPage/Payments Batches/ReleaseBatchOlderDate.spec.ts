@@ -1,9 +1,5 @@
 import { test, expect } from "@playwright/test";
 
-test.use({
-  storageState: "auth.json",
-});
-
 test("test", async ({ page }) => {
   await page.goto("https://uat-payouts.benepay.io/client-debtors");
   await page.getByRole("button", { name: "Payments" }).click();
