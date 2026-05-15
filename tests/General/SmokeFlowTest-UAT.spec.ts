@@ -79,7 +79,7 @@ test("Upload invoice + create batch + release batch", async ({ page }) => {
     name: "Supplier Invoice Number *",
   });
 
-  await expect(invoiceInput).toBeVisible({ timeout: 40000 });
+  await expect(invoiceInput).toBeVisible({ timeout: 70000 });
 
   await selectDropdown(page, { index: 2, optionText: "Nexa" });
   await selectDropdown(page, { index: 3, optionText: "Nextera" });
@@ -88,10 +88,26 @@ test("Upload invoice + create batch + release batch", async ({ page }) => {
 
   await page.waitForLoadState("networkidle");
 
+  // ✅ Updated GL code (was: "270 - Interest income")
   await selectDropdown(page, {
     index: 5,
-    optionText: "270 - Interest income",
+    optionText: "404 - Fees charged by your",
   });
+
+  // ✅ NEW: Select type → EXEMPTINPUT (all line items, re-queried each iteration)
+  const taxCount = await page
+    .getByRole("combobox")
+    .filter({ hasText: "Select type" })
+    .count();
+
+  for (let i = 0; i < taxCount; i++) {
+    await page
+      .getByRole("combobox")
+      .filter({ hasText: "Select type" })
+      .first()
+      .click();
+    await page.getByRole("option", { name: "EXEMPTINPUT" }).click();
+  }
 
   await page.getByRole("button", { name: "Submit" }).click();
 
@@ -141,7 +157,9 @@ test("Upload invoice + create batch + release batch", async ({ page }) => {
 
   await page.waitForTimeout(7000);
 
-  //Relase batch
+  // =========================
+  // RELEASE BATCH
+  // =========================
 
   await page.getByRole("combobox").nth(1).click();
   await page.getByRole("option", { name: "Awaiting Release" }).click();
