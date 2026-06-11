@@ -1,8 +1,9 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../../utils/adminFixture.js";
+import 'dotenv/config';
+import { BASE_URL } from '../../utils/config.js';
 
-test("test", async ({ page }) => {
-  await page.goto("https://uat-payouts.benepay.io/client-debtors");
-  await page.getByRole("link", { name: "Invoices" }).click();
+test("Create Invoice With No Line Items", async ({ page }) => {
+  await page.goto(BASE_URL + '/invoices');
   await page.getByRole("button", { name: "Create Invoice" }).click();
 
   await page.waitForLoadState('networkidle');
@@ -19,10 +20,22 @@ test("test", async ({ page }) => {
   await invoiceTypeDropdown.click();
   await page.getByRole("option", { name: "Credit Transfers" }).click();
 
+  // Currency dropdown
+  const currencyDropdown = page
+    .locator("text=Currency")
+    .locator('xpath=following::button[@role="combobox"][1]');
+
+  await currencyDropdown.click();
+
+  await page.getByRole('option', { name: 'GBP - Pound Sterling' }).click();
+
+  await page.getByRole('combobox').filter({ hasText: '545' }).click();
+  await page.getByRole('option', { name: 'HealthEquip Solutions Ltd' }).click();
+  await page.waitForTimeout(2000);
   await page.getByRole("button", { name: "Submit" }).click();
   await page
     .getByText("Please add at least one line item with a description.✕")
     .click();
 
-    await page.waitForTimeout(5000);
+  await page.waitForTimeout(5000);
 });

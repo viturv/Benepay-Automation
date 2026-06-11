@@ -1,9 +1,9 @@
-import { test, expect } from '../../utils/fixtures';
+import { test, expect } from '../../utils/adminFixture.js';
+import 'dotenv/config';
+import { BASE_URL } from '../../utils/config.js';
 
 test('Create Invoice without selecting required fields', async ({ page }) => {
-  await page.goto('https://uat-payouts.benepay.io/client-debtors');
-
-  await page.getByRole('link', { name: 'Invoices' }).click();
+await page.goto(BASE_URL + '/invoices');
   await page.getByRole('button', { name: 'Create Invoice' }).click();
 
   await expect(page.getByRole('heading', { name: 'Create New Invoice' })).toBeVisible();

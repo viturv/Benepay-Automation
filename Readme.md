@@ -353,6 +353,7 @@ This reads `package.json` and installs:
 - `otpauth`
 - `@types/node`
 
+
 ---
 
 ### Step 3 — Install Playwright Browsers
@@ -370,7 +371,17 @@ To install only Chromium (faster):
 npx playwright install chromium
 ```
 
----
+```bash
+npx install chalk
+```
+```bash
+npx install exceljs
+```
+```bash
+npm install pdfkit
+```
+
+npm install --save-dev @types/pdfkit
 
 ### Step 4 — Set Up the `.env` File
 

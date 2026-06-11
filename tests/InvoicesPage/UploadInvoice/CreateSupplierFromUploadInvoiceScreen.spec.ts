@@ -1,9 +1,12 @@
-import { test, expect } from '../../utils/fixtures';
+import { test, expect } from '../../utils/adminFixture.js';
+import 'dotenv/config';
 import path from 'path/win32';
+import { BASE_URL } from '../../utils/config.js';
 
-const filePath = path.join(
-  "C:\\Users\\vitur\\Downloads",
-  "invoice_gbp_v3.pdf",
+const filePath = path.resolve(
+  'invoices',
+  'NoSupplier',
+  'NoSupplier.pdf'
 );
 
 
@@ -11,11 +14,10 @@ function randNum(digits: number) {
   return Math.floor(Math.random() * 9 * 10 ** (digits - 1) + 10 ** (digits - 1)).toString();
 }
 
-test('test', async ({ page }) => {
-  await page.goto('https://uat-payouts.benepay.io/client-debtors');
-  await page.getByRole('link', { name: 'Invoices' }).click();
+test('Creating Supplier From Upload Invoice', async ({ page }) => {
+
+  await page.goto(BASE_URL + '/invoices');
   await page.getByRole('button', { name: 'Upload New Invoice' }).click();
-  await page.getByRole('button', { name: 'Choose File' }).click();
   await page.locator('input[type="file"]').setInputFiles(filePath);
   await page.getByRole('button', { name: 'Add Supplier' }).click();
   await page.getByRole('button', { name: 'Yes' }).click();

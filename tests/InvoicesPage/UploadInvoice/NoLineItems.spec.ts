@@ -1,22 +1,50 @@
-import { test, expect } from '../../utils/fixtures';
-import path from 'path/win32';
+import { test, expect } from '../../utils/adminFixture.js';
+import path from 'path';
+import fs from 'fs';
+import 'dotenv/config';
+import { BASE_URL } from '../../utils/config.js';
 
-const filePath = path.join(
-  "C:\\Users\\vitur\\Downloads",
-  "missing_line_items.pdf",
-);
+const filePath = path.resolve('invoices', 'NoLineItems', 'NoLineItems.pdf');
 
-test('test', async ({ page }) => {
-  await page.goto('https://uat-payouts.benepay.io/client-debtors');
-  await page.getByRole('link', { name: 'Invoices' }).click();
-  await page.getByText('InvoicesManage and track all invoicesCreate InvoiceUpload New Invoice').click();
-  await page.getByRole('button', { name: 'Upload New Invoice' }).click();
-  await page.getByRole('button', { name: 'Choose File' }).click();
-  await page.locator('input[type="file"]').setInputFiles(filePath);
-  await page.getByRole('combobox').filter({ hasText: 'Select supplier (Acme' }).click();
-  await page.getByRole('option', { name: 'Suppl' }).click();
-  await page.getByRole('button', { name: 'Submit' }).click();
-  await page.getByText('At least one line item is required✕').click();
+if (!fs.existsSync(filePath)) {
+  throw new Error(`Invoice PDF not found: ${filePath}`);
+}
 
-  await page.waitForTimeout(5000);
+test.describe('Invoices', () => {
+  test.setTimeout(120_000);
+
+  test('Invoice Without Line Items', async ({ page }) => {
+    await page.goto(`${BASE_URL}/invoices`);
+
+    await page.getByRole('button', { name: 'Upload New Invoice' }).click();
+
+    await page.locator('input[type="file"]').setInputFiles(filePath);
+
+    await expect(
+      page.getByText('Invoice scanned successfully.')
+    ).toBeVisible({
+      timeout: 90_000,
+    });
+
+    await expect(
+      page.getByRole('heading', { name: /Invoice Information/i })
+    ).toBeVisible({
+      timeout: 30_000,
+    });
+
+    await page.waitForTimeout(1000);
+    const submitButton = page.getByRole('button', { name: 'Submit' });
+
+    await expect(submitButton).toBeEnabled({
+      timeout: 15_000,
+    });
+
+    await submitButton.click();
+
+    await expect(
+      page.getByText(/At least one line item is required/i)
+    ).toBeVisible({
+      timeout: 15_000,
+    });
+  });
 });

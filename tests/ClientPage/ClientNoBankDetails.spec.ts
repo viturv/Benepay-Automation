@@ -1,7 +1,10 @@
-import { test, expect } from '../utils/fixtures';
+import { test, expect } from '../utils/adminFixture.js';
+import 'dotenv/config'; 
+import { BASE_URL } from '../utils/config.js';
 
 test('shows validation error when Accounts fields are empty', async ({ page }) => {
-  await page.goto('https://uat-payouts.benepay.io/client-debtors');
+
+  await page.goto(BASE_URL + '/client-debtors');
 
   await page.getByRole('button', { name: 'Edit' }).click();
   await page.waitForLoadState('networkidle');

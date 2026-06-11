@@ -16,11 +16,18 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: 1,
-  reporter: 'html',
-
+  reporter: [
+  ['html', {
+      open: 'never',
+      outputFolder: 'playwright-report'
+  }], 
+  ['json', {
+      outputFile: 'test-results/results.json'
+  }]
+],
   use: {
     trace: 'on-first-retry',
-    headless: false,
+    headless: true,
     // No storageState here — sessionStorage is injected via fixtures.ts
   },
 

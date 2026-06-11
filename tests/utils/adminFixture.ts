@@ -1,13 +1,14 @@
-import { test as base, expect } from '@playwright/test';
-import type { Page } from 'playwright';
+import {test as base, expect} from '@playwright/test';
 import * as fs from 'fs';
+import { BASE_URL } from './config.js';
+import type { Page } from 'playwright';
 
 const AUTH_FILE = '.auth/admin-auth.json';
 
 async function injectSessionStorage(page: Page) {
   if (!fs.existsSync(AUTH_FILE)) {
     throw new Error(
-      `auth.json not found. Run: npx ts-node tests/utils/saveSession.ts`
+      `Admin auth file not found: ${AUTH_FILE}`
     );
   }
 
@@ -15,14 +16,13 @@ async function injectSessionStorage(page: Page) {
   const sessionData: Record<string, string> = auth.sessionStorage ?? {};
 
   if (Object.keys(sessionData).length === 0) {
-    console.warn('⚠️  auth.json has no sessionStorage data. Re-run saveSession.ts');
-    return;
+    throw new Error(
+      'Admin auth file contains no sessionStorage data'
+    );
   }
 
-  // Navigate to the origin first so sessionStorage can be set on the right domain
-  await page.goto('https://uat-payouts.benepay.io/');
+await page.goto(BASE_URL);
 
-  // Inject all sessionStorage keys
   await page.evaluate((data) => {
     for (const [key, value] of Object.entries(data)) {
       sessionStorage.setItem(key, value);
@@ -30,9 +30,7 @@ async function injectSessionStorage(page: Page) {
   }, sessionData);
 }
 
-// Export a custom `test` with session pre-injected
-export const test = base.extend<{ authenticatedPage: Page }>({
-  // Override the default `page` fixture to auto-inject session
+export const test = base.extend({
   page: async ({ page }, use) => {
     await injectSessionStorage(page);
     await use(page);

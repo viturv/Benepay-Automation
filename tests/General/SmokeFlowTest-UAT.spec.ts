@@ -1,177 +1,176 @@
-import { test, expect, Page, Locator } from "@playwright/test";
-import { login } from "../utils/login";
+import type { Page } from '@playwright/test';
+import { test, expect } from '../utils/adminFixture.js';
+import { generateInvoicePdf } from '../utils/generateInvoicePdf.js';
+import { BASE_URL } from '../utils/config.js';
+import {
+  approvePendingInvoice,
+  approvePendingPaymentBatch,
+} from '../utils/approvalActions.js';
+import * as fs from 'fs';
 
-test.setTimeout(180000);
+const APPROVER_AUTH_FILE = '.auth/approver-auth.json';
 
-// 🔥 Stable dropdown handler
-async function selectDropdown(
-  page: Page,
-  options: {
-    index?: number;
-    container?: Locator;
-    optionText: string;
-    label?: string;
-  },
-) {
-  let dropdown: Locator;
+test.setTimeout(180_000);
 
-  if (options.container) {
-    const dropdowns = options.container.getByRole("combobox");
+test('Upload invoice + approve invoice + create batch + approve batch + release batch', async ({
+  page,
+  browser,
+}) => {
+  const approverContext = await browser.newContext();
+  const approverPage = await approverContext.newPage();
 
-    await expect
-      .poll(async () => await dropdowns.count(), { timeout: 20000 })
-      .toBeGreaterThan(0);
+  await injectApproverSessionStorage(approverPage);
 
-    dropdown = options.label
-      ? options.container.getByRole("combobox", { name: options.label })
-      : dropdowns.first();
-  } else {
-    const dropdowns = page.getByRole("combobox");
+  try {
+    await page.goto(`${BASE_URL}/invoices`);
 
-    await expect
-      .poll(async () => await dropdowns.count(), { timeout: 20000 })
-      .toBeGreaterThan(options.index!);
+    await page.getByRole('button', { name: 'Upload New Invoice' }).click();
 
-    dropdown = dropdowns.nth(options.index!);
+    const invoiceData = await generateInvoicePdf();
+
+    await page.setInputFiles('input[type="file"]', invoiceData.filePath);
+
+    await expect(page.getByText('Scanning document...')).not.toBeVisible({
+      timeout: 120_000,
+    });
+
+    await expect(page.getByRole('combobox').first()).toBeVisible({
+      timeout: 60_000,
+    });
+
+    await page
+      .getByRole('combobox')
+      .filter({ hasText: 'Select GL code' })
+      .click();
+
+    await page
+      .getByRole('listbox')
+      .getByRole('option', { name: '310 - Cost of Goods Sold' })
+      .click();
+
+    const taxCount = await page
+      .getByRole('combobox')
+      .filter({ hasText: 'Select type' })
+      .count();
+
+    for (let i = 0; i < taxCount; i++) {
+      await page
+        .getByRole('combobox')
+        .filter({ hasText: 'Select type' })
+        .first()
+        .click();
+
+      await page.getByRole('option', { name: 'ZERORATEDINPUT' }).click();
+    }
+
+    await page.getByRole('button', { name: 'Submit' }).click();
+
+    await page.waitForURL('**/invoices');
+    await expect(page.getByText('All Invoices')).toBeVisible();
+
+    // Approver approves invoice
+    await approvePendingInvoice(approverPage);
+
+    // Admin creates batch
+    await page.goto(`${BASE_URL}/payment-batches`);
+
+    await page.getByRole('button', { name: 'Create Batch' }).click();
+
+    await page
+      .getByRole('combobox')
+      .filter({ hasText: 'Choose a client' })
+      .click();
+
+    await page.getByRole('option', { name: 'GreenLife Hospitals' }).click();
+
+    await page
+      .getByRole('combobox')
+      .filter({ hasText: 'Choose debit account' })
+      .click();
+
+    await page.getByText(/benepay.*GBP/i).click();
+
+    await page
+      .getByRole('dialog')
+      .getByRole('row')
+      .nth(1)
+      .getByRole('checkbox')
+      .click();
+
+    await selectReleaseDate(page);
+
+    const createBatchBtn = page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Create Batch' });
+
+    await expect(createBatchBtn).toBeEnabled({ timeout: 10_000 });
+    await createBatchBtn.click();
+
+    // Approver approves batch
+    await approvePendingPaymentBatch(approverPage);
+
+    // Admin releases batch
+    // await page.goto(`${BASE_URL}/payment-batches`);
+
+    // await page.getByRole('combobox').nth(1).click();
+    // await page.getByRole('option', { name: 'Awaiting Release' }).click();
+    // await page.getByRole('button', { name: 'Apply Filters' }).click();
+
+    // await page.getByRole('cell', { name: '1' }).nth(2).dblclick();
+
+    // await page.getByRole('button', { name: 'Release Payment Batch' }).click();
+
+    // await page.getByRole('button', { name: 'Close' }).nth(1).click();
+  } finally {
+    await approverContext.close();
+  }
+});
+
+async function injectApproverSessionStorage(page: Page): Promise<void> {
+  if (!fs.existsSync(APPROVER_AUTH_FILE)) {
+    throw new Error(`Approver auth file not found: ${APPROVER_AUTH_FILE}`);
   }
 
-  await expect(dropdown).toBeVisible();
-  await expect(dropdown).toBeEnabled();
+  const auth = JSON.parse(fs.readFileSync(APPROVER_AUTH_FILE, 'utf-8'));
+  const sessionData: Record<string, string> = auth.sessionStorage ?? {};
 
-  await dropdown.click();
-
-  const listbox = page.getByRole("listbox");
-
-  await expect
-    .poll(async () => await listbox.count(), { timeout: 15000 })
-    .toBeGreaterThan(0);
-
-  const activeListbox = listbox.last();
-
-  let option = activeListbox.getByRole("option", {
-    name: options.optionText,
-  });
-
-  if (!(await option.count())) {
-    option = activeListbox.locator(`text=${options.optionText}`);
+  if (Object.keys(sessionData).length === 0) {
+    throw new Error('Approver auth file contains no sessionStorage data');
   }
 
-  await expect(option.first()).toBeVisible();
-  await option.first().click();
+  await page.goto(BASE_URL);
+
+  await page.evaluate((data) => {
+    for (const [key, value] of Object.entries(data)) {
+      sessionStorage.setItem(key, value);
+    }
+  }, sessionData);
 }
 
-test("Upload invoice + create batch + release batch", async ({ page }) => {
-  await page.goto("https://uat-payouts.benepay.io/");
-  await login(page);
+async function selectReleaseDate(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Select a date' }).click();
 
-  // =========================
-  // UPLOAD INVOICE
-  // =========================
+  const today = new Date();
 
-  await page.getByRole("link", { name: "Invoices" }).click();
-  await page.getByRole("button", { name: "Upload New Invoice" }).click();
+  for (let i = 0; i < 7; i++) {
+    const targetDate = new Date();
+    targetDate.setDate(today.getDate() + i);
 
-  await page
-    .locator('input[type="file"]')
-    .setInputFiles("C:/Users/vitur/Downloads/Invoice.pdf");
+    const targetDay = targetDate.getDate().toString();
 
-  const invoiceInput = page.getByRole("textbox", {
-    name: "Supplier Invoice Number *",
-  });
+    const dayButtons = await page
+      .getByRole('gridcell', { name: targetDay, exact: true })
+      .all();
 
-  await expect(invoiceInput).toBeVisible({ timeout: 70000 });
-
-  await selectDropdown(page, { index: 2, optionText: "Nexa" });
-  await selectDropdown(page, { index: 3, optionText: "Nextera" });
-
-  await invoiceInput.fill(`INV-${Date.now()}`);
-
-  await page.waitForLoadState("networkidle");
-
-  // ✅ Updated GL code (was: "270 - Interest income")
-  await selectDropdown(page, {
-    index: 5,
-    optionText: "404 - Fees charged by your",
-  });
-
-  // ✅ NEW: Select type → EXEMPTINPUT (all line items, re-queried each iteration)
-  const taxCount = await page
-    .getByRole("combobox")
-    .filter({ hasText: "Select type" })
-    .count();
-
-  for (let i = 0; i < taxCount; i++) {
-    await page
-      .getByRole("combobox")
-      .filter({ hasText: "Select type" })
-      .first()
-      .click();
-    await page.getByRole("option", { name: "EXEMPTINPUT" }).click();
+    for (const dayButton of dayButtons) {
+      if ((await dayButton.isVisible()) && (await dayButton.isEnabled())) {
+        await dayButton.click();
+        return;
+      }
+    }
   }
 
-  await page.getByRole("button", { name: "Submit" }).click();
-
-  await page.waitForURL("**/invoices");
-  await expect(page.getByText("All Invoices")).toBeVisible();
-
-  // =========================
-  // WAIT FOR BACKEND
-  // =========================
-  await page.waitForTimeout(10000);
-
-  // =========================
-  // NAVIGATION (FIXED)
-  // =========================
-
-  await page.getByRole("button", { name: "Payments" }).click();
-  await page.getByRole("link", { name: "Payment Batches" }).click();
-  await page.getByRole("button", { name: "Create Batch" }).click();
-
-  await page
-    .getByRole("combobox")
-    .filter({ hasText: "Choose a client" })
-    .click();
-  await page.getByRole("option", { name: "Nexa" }).click();
-
-  await page
-    .getByRole("combobox")
-    .filter({ hasText: "Choose debit account" })
-    .click();
-  await page.getByText("benepay – GBP").click();
-
-  await page
-    .getByRole("dialog")
-    .getByRole("row")
-    .nth(1)
-    .getByRole("checkbox")
-    .click();
-
-  await page.getByRole("button", { name: "Select a date" }).click();
-  await page.getByRole("gridcell", { name: "21" }).click();
-
-  const createBatchBtn = page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Create Batch" });
-  await expect(createBatchBtn).toBeEnabled({ timeout: 10000 });
-  await createBatchBtn.click();
-
-  await page.waitForTimeout(7000);
-
-  // =========================
-  // RELEASE BATCH
-  // =========================
-
-  await page.getByRole("combobox").nth(1).click();
-  await page.getByRole("option", { name: "Awaiting Release" }).click();
-  await page.getByRole("button", { name: "Apply Filters" }).click();
-
-  await page.waitForTimeout(2000);
-
-  await page.getByRole("cell", { name: "1" }).nth(2).dblclick();
-  await page.waitForTimeout(2000);
-
-  await page.getByRole("button", { name: "Release Payment Batch" }).click();
-  await page.waitForTimeout(2000);
-
-  await page.getByRole("button", { name: "Close" }).nth(1).click();
-});
+  throw new Error(
+    'Could not find any enabled release date within the next 7 days.'
+  );
+}

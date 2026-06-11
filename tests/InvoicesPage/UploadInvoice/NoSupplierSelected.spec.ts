@@ -1,15 +1,17 @@
-import { test, expect } from "@playwright/test";
-import path from "path/win32";
+import { test, expect } from "../../utils/adminFixture.js";
+import 'dotenv/config';
+import { BASE_URL } from '../../utils/config.js';
+import path from 'path';
 
-
-const filePath = path.join(
-  "C:\\Users\\vitur\\Downloads",
-  "missing_supplier_name.pdf",
+const filePath = path.resolve(
+  'invoices',
+  'NoSupplier',
+  'NoSupplier.pdf'
 );
 
-test("test", async ({ page }) => {
-  await page.goto("https://uat-payouts.benepay.io/client-debtors");
-  await page.getByRole("link", { name: "Invoices" }).click();
+
+test("No supplier selected", async ({ page }) => {
+   await page.goto(BASE_URL + '/invoices');
   await page.getByRole("button", { name: "Upload New Invoice" }).click();
   await page.locator('input[type="file"]').setInputFiles(filePath);
 

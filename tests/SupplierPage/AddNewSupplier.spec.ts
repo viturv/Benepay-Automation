@@ -1,4 +1,6 @@
-import { test } from '../utils/fixtures';
+import { expect, test } from '../utils/adminFixture.js';
+import 'dotenv/config';
+import { BASE_URL, CLIENT,SUPPLIER } from '../utils/config.js';
 
 function rand(prefix: string) {
   return `${prefix}${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
@@ -7,14 +9,15 @@ function randNum(digits: number) {
   return Math.floor(Math.random() * 9 * 10 ** (digits - 1) + 10 ** (digits - 1)).toString();
 }
 
-test('add supplier with random data', async ({ page }) => {
-  await page.goto('https://uat-payouts.benepay.io/client-debtors');
-  await page.getByRole('link', { name: 'Suppliers' }).click();
+test('Add supplier with random data', async ({ page }) => {
+
+  await page.goto(BASE_URL + '/suppliers');
+  // await page.getByRole('link', { name: 'Suppliers' }).click();
   await page.getByRole('button', { name: 'Add Supplier' }).click();
 
   // Client selection
   await page.getByRole('combobox').filter({ hasText: 'Select client' }).click();
-  await page.getByRole('option', { name: 'Nexa' }).click();
+  await page.getByRole('option', { name: CLIENT }).click();
 
   // Supplier details
   await page.getByRole('textbox', { name: 'Company ID' }).fill(randNum(5));
@@ -54,5 +57,13 @@ test('add supplier with random data', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Submit' }).click();
   await page.getByRole('button', { name: 'Activate' }).click();
-  await page.getByRole('button', { name: 'Refresh' }).click();
+  await page.getByRole('button', { name: 'Activate' }).click();
+
+await expect(
+  page.getByText(
+    /Supplier activated successfully!|First approve supplier and then try to update the supplier details/i
+  )
+).toBeVisible({ timeout: 15_000 });
+  // await page.getByRole('button', { name: 'Refresh' }).click();
 });
+

@@ -1,12 +1,47 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from '../utils/approverFixture.js';
+import { BASE_URL } from '../utils/config.js';
+import type { Page, Locator } from '@playwright/test';
 
-test("test", async ({ page }) => {
-  // Step 1: Navigate and click the first row's checkbox
-  await page.goto("https://uat-payouts.benepay.io/client-debtors");
-  await page.getByRole("link", { name: "Approvals" }).click();
-  await page.getByRole("cell").first().click();
+test('approve invoice', async ({ page }) => {
+  await page.goto(`${BASE_URL}/approvals`);
 
-  // Step 2: Click "Approve" scoped to the first data row only
-  const firstRow = page.getByRole("row").nth(1); // nth(0) is the header row
-  await firstRow.getByRole("button", { name: "Approve", exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: /Approval Management/i })
+  ).toBeVisible({ timeout: 30_000 });
+
+  const invoiceSection = getApprovalSection(page, /Invoice\s*\(\d+\)/i);
+
+  const pendingInvoiceRow = invoiceSection
+    .locator('tbody tr')
+    .filter({ has: page.getByText(/Pending Approval/i) })
+    .filter({ has: page.getByRole('button', { name: /^Approve$/i }) })
+    .first();
+
+  await expect(pendingInvoiceRow).toBeVisible({ timeout: 30_000 });
+
+  await pendingInvoiceRow
+    .getByRole('button', { name: /^Approve$/i })
+    .click();
+
+  await page.getByRole('button', { name: /Confirm Approval/i }).click();
+
+  await expectApprovedTab(page);
+
+  await page.getByRole('button', { name: 'Refresh' }).click();
 });
+
+async function expectApprovedTab(page: Page): Promise<void> {
+  const approvedTab = page.getByRole('tab', { name: /^Approved$/i });
+
+  await expect(approvedTab).toBeVisible({ timeout: 30_000 });
+
+  await expect(approvedTab).toHaveAttribute('aria-selected', 'true', {
+    timeout: 30_000,
+  });
+}
+
+function getApprovalSection(page: Page, sectionTitle: RegExp): Locator {
+  return page
+    .getByText(sectionTitle)
+    .locator('xpath=ancestor::*[.//table][1]');
+}

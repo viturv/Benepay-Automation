@@ -1,17 +1,53 @@
-import { test, expect } from '../utils/fixtures';
+import { test, expect } from '../utils/approverFixture.js';
+import { BASE_URL } from '../utils/config.js';
+import type { Page, Locator } from '@playwright/test';
 
-test('test', async ({ page }) => {
-  await page.goto('https://uat-payouts.benepay.io/approvals');
+test('approve supplier bank account', async ({ page }) => {
+  await page.goto(`${BASE_URL}/approvals`);
 
-  // Wait for the page to fully load
-  await page.waitForSelector('h1:has-text("Approval Management")');
+  await expect(
+    page.getByRole('heading', { name: /Approval Management/i })
+  ).toBeVisible({ timeout: 30_000 });
 
-  // Supplier Bank Account is the 2nd table (0=Invoice, 1=Supplier Bank Account, 2=Bulk Payment)
-  const supplierTable = page.locator('table').nth(1);
+  const supplierBankAccountSection = getApprovalSection(
+    page,
+    /Supplier Bank Account\s*\(\d+\)/i
+  );
 
-  // Click the first row checkbox in the Supplier Bank Account table body
-  await supplierTable.locator('tbody tr').first().getByRole('checkbox').click();
+  const pendingBankAccountRow = supplierBankAccountSection
+    .locator('tbody tr')
+    .filter({ has: page.getByText(/Pending Approval/i) })
+    .filter({ has: page.getByRole('checkbox') })
+    .first();
 
-  // Click the bulk approve button that appears after selection
-  await page.getByRole('button', { name: 'Approve Selected' }).click();
+  await expect(pendingBankAccountRow).toBeVisible({ timeout: 30_000 });
+
+  await pendingBankAccountRow.getByRole('checkbox').check();
+
+  const approveSelectedButton = page.getByRole('button', {
+    name: /Approve Selected/i,
+  });
+
+  await expect(approveSelectedButton).toBeEnabled({ timeout: 15_000 });
+  await approveSelectedButton.click();
+
+  await page.getByRole('button', { name: /Confirm Approval/i }).click();
+
+  await expectApprovedTab(page);
 });
+
+async function expectApprovedTab(page: Page): Promise<void> {
+  const approvedTab = page.getByRole('tab', { name: /^Approved$/i });
+
+  await expect(approvedTab).toBeVisible({ timeout: 30_000 });
+
+  await expect(approvedTab).toHaveAttribute('aria-selected', 'true', {
+    timeout: 30_000,
+  });
+}
+
+function getApprovalSection(page: Page, sectionTitle: RegExp): Locator {
+  return page
+    .getByText(sectionTitle)
+    .locator('xpath=ancestor::*[.//table][1]');
+}

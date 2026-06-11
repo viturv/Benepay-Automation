@@ -1,7 +1,18 @@
-import { Page } from '../utils/fixtures';
-import { test, expect } from "@playwright/test";
-import { login } from '../utils/login';
+import { test, expect } from '@playwright/test';
+import { login } from '../utils/login.js';
 
-test("Upload invoice + create batch + release batch", async ({ page }) => {
-  await page.goto("https://uat-payouts.benepay.io/");
-  await login(page);});
+
+test("SuccesfullLogin", async ({ page }) => {
+
+  await login(page);
+ await expect(
+    page.locator('div').filter({
+      hasText: /^EPIC$/
+    }).nth(3)
+  ).toBeVisible();
+
+
+});
+
+
+
