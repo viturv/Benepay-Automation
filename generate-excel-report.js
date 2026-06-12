@@ -101,9 +101,15 @@ async function generateExcelReport() {
     to: 'G1',
   };
 
-  await workbook.xlsx.writeFile(
-    './test-results/Playwright-Test-Report.xlsx'
-  );
+  const outputFolder = './test-results';
+  const outputFile = path.join(outputFolder, 'Playwright-Test-Report.xlsx');
+
+  // Check if folder exists, if not then create it
+  if (!fs.existsSync(outputFolder)) {
+    fs.mkdirSync(outputFolder, { recursive: true });
+  }
+
+  await workbook.xlsx.writeFile(outputFile);
 
   console.log(
     '\nExcel Report Generated Successfully\n'

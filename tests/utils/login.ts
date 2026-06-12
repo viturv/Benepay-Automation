@@ -25,14 +25,14 @@ export async function login(page: Page) {
 
   await page.getByRole('button', { name: 'Sign in' }).click();
 
-  if (ENVIRONMENT === 'UAT') {
-    await page.getByRole('textbox', { name: 'Code *' }).waitFor();
+  // if (ENVIRONMENT === 'UAT') {
+  //   await page.getByRole('textbox', { name: 'Code *' }).waitFor();
 
-    const otp = generateOTP(MFA.admin);
-    await page.getByRole('textbox', { name: 'Code *' }).fill(otp);
+  //   const otp = generateOTP(MFA.admin);
+  //   await page.getByRole('textbox', { name: 'Code *' }).fill(otp);
 
-    await page.getByRole('button', { name: 'Confirm' }).click();
-  }
+  //   await page.getByRole('button', { name: 'Confirm' }).click();
+  // }
 
   // WAIT FOR DASHBOARD
   await page.waitForURL('**/client-debtors');
@@ -102,14 +102,14 @@ export async function login(page: Page) {
 
   await page.getByRole('button', { name: 'Sign in' }).click();
 
-  if (ENVIRONMENT === 'UAT') {
-    await page.getByRole('textbox', { name: 'Code *' }).waitFor();
+  // if (ENVIRONMENT === 'UAT') {
+  //   await page.getByRole('textbox', { name: 'Code *' }).waitFor();
 
-    const otp = generateOTP(MFA.APPROVER);
-    await page.getByRole('textbox', { name: 'Code *' }).fill(otp);
+  //   const otp = generateOTP(MFA.APPROVER);
+  //   await page.getByRole('textbox', { name: 'Code *' }).fill(otp);
 
-    await page.getByRole('button', { name: 'Confirm' }).click();
-  }
+  //   await page.getByRole('button', { name: 'Confirm' }).click();
+  // }
 
   // WAIT FOR DASHBOARD
   await page.waitForURL('**/client-debtors');
