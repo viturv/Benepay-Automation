@@ -429,6 +429,7 @@ npx playwright test tests/login.spec.ts
 
 To open the interactive UI mode:
 ```bash
+
 npx playwright test --ui
 ```
 
